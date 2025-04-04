@@ -1,36 +1,9 @@
-import { Stack, Tabs } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { ThemeProvider, useTheme } from '../theme/ThemeProvider';
-
-// Root layout that wraps all routes
-export default function RootLayout() {
-  return (
-    <ThemeProvider>
-      <RootNavigation />
-    </ThemeProvider>
-  );
-}
-
-// Root Navigation handling both tabs and stacks
-function RootNavigation() {
-  const { colors } = useTheme();
-  
-  return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: colors.background },
-      }}
-    >
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="car" />
-      <Stack.Screen name="camera" />
-    </Stack>
-  );
-}
+import { useTheme } from '../../theme/ThemeProvider';
 
 // Tabs layout for the bottom navigation
-function TabLayout() {
+export default function TabLayout() {
   const { colors } = useTheme();
   
   return (

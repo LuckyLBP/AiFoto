@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Image, ActivityIndicator, Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { useTheme } from '../theme/ThemeProvider';
-import { useDummyRemoveBg } from '../hooks/useDummyRemoveBg';
+import { useTheme } from '../../theme/ThemeProvider';
+import { useDummyRemoveBg } from '../../hooks/useDummyRemoveBg';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useGallery } from '../hooks/useGallery';
+import { useGallery } from '../../hooks/useGallery';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function HomeScreen() {
   const { colors } = useTheme();
@@ -83,16 +84,25 @@ export default function HomeScreen() {
     }
   };
 
+  // Navigate to the car photography flow
+  const startCarPhotoFlow = () => {
+    router.push('/car');
+  };
+
   return (
     <View style={styles(colors).container}>
       <Text style={styles(colors).title}>Ta eller välj en bild</Text>
       
-      <View style={styles(colors).buttonContainer}>
-        <TouchableOpacity style={styles(colors).button} onPress={openCamera}>
-          <Text style={styles(colors).buttonText}>Ta foto</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles(colors).button} onPress={pickImage}>
-          <Text style={styles(colors).buttonText}>Välj från galleri</Text>
+      <View style={styles(colors).featureContainer}>
+        <TouchableOpacity 
+          style={styles(colors).featureButton}
+          onPress={startCarPhotoFlow}
+        >
+          <Ionicons name="car" size={36} color={colors.primary} />
+          <Text style={styles(colors).featureText}>Fotografera bil</Text>
+          <Text style={styles(colors).featureDescription}>
+            Guidad fotografering av bil från alla vinklar
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -201,5 +211,28 @@ const styles = (colors: any) => StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     width: '100%',
+  },
+  featureContainer: {
+    width: '100%',
+    marginBottom: 20,
+  },
+  featureButton: {
+    backgroundColor: colors.surface,
+    borderRadius: 10,
+    padding: 20,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  featureText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginTop: 10,
+  },
+  featureDescription: {
+    textAlign: 'center',
+    color: colors.textSecondary,
+    marginTop: 5,
   },
 });

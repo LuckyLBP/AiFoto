@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View, FlatList, Image, TouchableOpacity } from 'react-native';
-import { useTheme } from '../theme/ThemeProvider';
-import { useGallery } from '../hooks/useGallery';
+import { useTheme } from '../../theme/ThemeProvider';
+import { useGallery } from '../../hooks/useGallery';
 
 export default function GalleryScreen() {
   const { colors } = useTheme();

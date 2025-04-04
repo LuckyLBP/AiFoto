@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View, Switch, TouchableOpacity } from 'react-native';
-import { useTheme } from '../theme/ThemeProvider';
+import { useTheme } from '../../theme/ThemeProvider';
 
 export default function ProfileScreen() {
   const { colors, theme, toggleTheme } = useTheme();
