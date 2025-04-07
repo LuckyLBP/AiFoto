@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useCarSession } from '../../hooks/useCarSession';
 import { useCarAngles } from '../../hooks/useCarAngles';
+import { useGallery } from '../../hooks/useGallery';
 import ImageEditor from '../../components/ImageEditor';
 import { CarPhoto } from '../../types';
 
@@ -23,6 +24,7 @@ export default function CarEditScreen() {
   const router = useRouter();
   const { activeSession, loading: sessionLoading, updatePhoto, completeSession } = useCarSession();
   const { carAngles } = useCarAngles();
+  const { addImage } = useGallery();
   const [currentlyEditing, setCurrentlyEditing] = useState<string | null>(null);
   const [processingComplete, setProcessingComplete] = useState(false);
   
@@ -48,11 +50,25 @@ export default function CarEditScreen() {
     if (!currentlyEditing || !activeSession) return;
     
     try {
+      // First, add to gallery
+      const savedGalleryImage = await addImage(finalImageUri);
+      
+      // Then update the session with both URIs
       await updatePhoto(currentlyEditing, { 
         backgroundAdded: true,
         finalImageUri: finalImageUri
       });
+      
       setCurrentlyEditing(null);
+      
+      // Show success message
+      if (savedGalleryImage) {
+        Alert.alert(
+          "Bild sparad",
+          "Bilden har sparats till galleriet och till sessionen",
+          [{ text: "OK" }]
+        );
+      }
     } catch (error) {
       console.error('Fel vid sparande av redigerad bild:', error);
       Alert.alert('Fel', 'Kunde inte spara den redigerade bilden.');
