@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Pressable, ActivityIndicator, Dimensions } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Pressable, ActivityIndicator, Dimensions, Platform } from 'react-native';
 import { Camera, CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { CarAngle } from '../types';
+import * as ScreenOrientation from 'expo-screen-orientation';
 
 interface CarCameraProps {
   carAngle: CarAngle;
@@ -15,9 +16,33 @@ const CarCamera: React.FC<CarCameraProps> = ({ carAngle, onPhotoTaken, onCancel 
   const [permission, requestPermission] = useCameraPermissions();
   const [isTakingPhoto, setIsTakingPhoto] = useState(false);
   const [tempPhotoUri, setTempPhotoUri] = useState<string | null>(null);
+  const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait');
   const cameraRef = useRef<CameraView>(null);
   const windowWidth = Dimensions.get('window').width;
   const windowHeight = Dimensions.get('window').height;
+  
+  // Listen for orientation changes
+  useEffect(() => {
+    const updateOrientation = () => {
+      const { width, height } = Dimensions.get('window');
+      setOrientation(width > height ? 'landscape' : 'portrait');
+    };
+    
+    // Set initial orientation
+    updateOrientation();
+    
+    // Listen for dimension changes
+    const subscription = Dimensions.addEventListener('change', updateOrientation);
+    
+    // Allow rotation on this screen
+    ScreenOrientation.unlockAsync();
+    
+    return () => {
+      // Clean up listener and lock back to portrait when leaving
+      subscription.remove();
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+    };
+  }, []);
   
   const handleTakePhoto = async () => {
     if (cameraRef.current && !isTakingPhoto) {
@@ -74,7 +99,10 @@ const CarCamera: React.FC<CarCameraProps> = ({ carAngle, onPhotoTaken, onCancel 
   if (tempPhotoUri) {
     return (
       <View style={styles.container}>
-        <View style={styles.previewHeader}>
+        <View style={[
+          styles.previewHeader, 
+          orientation === 'landscape' && styles.previewHeaderLandscape
+        ]}>
           <TouchableOpacity onPress={retakePicture}>
             <Ionicons name="arrow-back" size={28} color="white" />
           </TouchableOpacity>
@@ -88,7 +116,10 @@ const CarCamera: React.FC<CarCameraProps> = ({ carAngle, onPhotoTaken, onCancel 
           contentFit="cover"
         />
         
-        <View style={styles.previewControls}>
+        <View style={[
+          styles.previewControls,
+          orientation === 'landscape' && styles.previewControlsLandscape
+        ]}>
           <TouchableOpacity style={styles.previewButton} onPress={retakePicture}>
             <Text style={styles.previewButtonText}>Ta om</Text>
           </TouchableOpacity>
@@ -113,11 +144,29 @@ const CarCamera: React.FC<CarCameraProps> = ({ carAngle, onPhotoTaken, onCancel 
         mute={true}
       >
         {/* Top bar med vinkelnamn */}
-        <View style={styles.topBar}>
-          <TouchableOpacity style={styles.backButton} onPress={onCancel}>
+        <View style={[
+          styles.topBar,
+          orientation === 'landscape' && styles.topBarLandscape
+        ]}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={onCancel}
+          >
             <Ionicons name="arrow-back" size={28} color="white" />
           </TouchableOpacity>
           <Text style={styles.angleText}>{carAngle.name}</Text>
+          
+          {orientation === 'landscape' ? (
+            <View style={styles.orientationBadge}>
+              <Ionicons name="phone-landscape" size={20} color="white" />
+              <Text style={styles.orientationText}>Landscape Mode</Text>
+            </View>
+          ) : (
+            <View style={styles.orientationBadge}>
+              <Ionicons name="phone-portrait" size={20} color="white" />
+              <Text style={styles.orientationText}>Portrait Mode</Text>
+            </View>
+          )}
         </View>
         
         {/* Kontur-/guideöverlägg */}
@@ -127,7 +176,9 @@ const CarCamera: React.FC<CarCameraProps> = ({ carAngle, onPhotoTaken, onCancel 
               source={carAngle.outlineImage}
               style={[
                 styles.outlineImage,
-                { width: windowWidth * 0.8, height: windowHeight * 0.5 }
+                orientation === 'landscape' ? 
+                  { width: windowWidth * 0.6, height: windowHeight * 0.7 } :
+                  { width: windowWidth * 0.8, height: windowHeight * 0.5 }
               ]}
               contentFit="contain"
             />
@@ -135,7 +186,10 @@ const CarCamera: React.FC<CarCameraProps> = ({ carAngle, onPhotoTaken, onCancel 
         )}
         
         {/* Beskrivningstooltip */}
-        <View style={styles.tooltipContainer}>
+        <View style={[
+          styles.tooltipContainer,
+          orientation === 'landscape' && styles.tooltipContainerLandscape
+        ]}>
           <View style={styles.tooltip}>
             <Text style={styles.tooltipText}>
               {carAngle.description}
@@ -144,7 +198,10 @@ const CarCamera: React.FC<CarCameraProps> = ({ carAngle, onPhotoTaken, onCancel 
         </View>
         
         {/* Bottom controls using Expo's recommended pattern */}
-        <View style={styles.shutterContainer}>
+        <View style={[
+          styles.shutterContainer,
+          orientation === 'landscape' && styles.shutterContainerLandscape
+        ]}>
           <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
             <Text style={styles.cancelText}>Avbryt</Text>
           </TouchableOpacity>
@@ -176,7 +233,7 @@ const CarCamera: React.FC<CarCameraProps> = ({ carAngle, onPhotoTaken, onCancel 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'red',
+    backgroundColor: 'black',
   },
   camera: {
     flex: 1,
@@ -189,6 +246,10 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 50,
   },
+  topBarLandscape: {
+    paddingTop: Platform.OS === 'ios' ? 20 : 10,
+    justifyContent: 'space-between',
+  },
   backButton: {
     padding: 8,
   },
@@ -199,6 +260,19 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  orientationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+  },
+  orientationText: {
+    color: 'white',
+    fontSize: 12,
+    marginLeft: 6,
   },
   text: {
     color: 'white',
@@ -226,6 +300,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
   },
+  tooltipContainerLandscape: {
+    bottom: 30,
+    right: 30,
+    left: 'auto',
+    alignItems: 'flex-end',
+    maxWidth: '40%',
+  },
   tooltip: {
     backgroundColor: 'rgba(0,0,0,0.7)',
     padding: 15,
@@ -245,6 +326,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 30,
+  },
+  shutterContainerLandscape: {
+    right: 30,
+    left: 'auto',
+    bottom: '50%',
+    width: 'auto',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    transform: [{ translateY: 50 }],
   },
   cancelButton: {
     width: 80,
@@ -292,6 +382,9 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 50,
   },
+  previewHeaderLandscape: {
+    paddingTop: Platform.OS === 'ios' ? 20 : 10,
+  },
   previewTitle: {
     color: 'white',
     fontSize: 18,
@@ -306,6 +399,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 20,
     paddingBottom: 30,
+  },
+  previewControlsLandscape: {
+    paddingBottom: 20,
   },
   previewButton: {
     flex: 1,

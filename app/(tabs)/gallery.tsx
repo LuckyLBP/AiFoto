@@ -1,17 +1,40 @@
-import React from 'react';
-import { StyleSheet, Text, View, FlatList, Image, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useGallery } from '../../hooks/useGallery';
+import ImageViewer from '../../components/ImageViewer';
 
 export default function GalleryScreen() {
   const { colors } = useTheme();
   const { images, deleteImage } = useGallery();
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+  const openImageViewer = (index: number) => {
+    setSelectedImageIndex(index);
+    setViewerVisible(true);
+  };
+
+  const closeImageViewer = () => {
+    setViewerVisible(false);
+  };
 
   if (images.length === 0) {
     return (
       <View style={[styles(colors).container, styles(colors).emptyContainer]}>
         <Text style={styles(colors).emptyText}>Inga bilder sparade än</Text>
       </View>
+    );
+  }
+
+  if (viewerVisible) {
+    return (
+      <ImageViewer
+        images={images}
+        initialImageIndex={selectedImageIndex}
+        onClose={closeImageViewer}
+      />
     );
   }
 
@@ -22,9 +45,20 @@ export default function GalleryScreen() {
         data={images}
         keyExtractor={(item) => item.id}
         numColumns={2}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <View style={[styles(colors).imageContainer, { width: '47%' }]}>
-            <Image source={{ uri: item.uri }} style={styles(colors).image} resizeMode="cover" />
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => openImageViewer(index)}
+              style={styles(colors).imageTouchable}
+            >
+              <Image 
+                source={{ uri: item.uri }} 
+                style={styles(colors).image} 
+                contentFit="cover"
+                transition={300}
+              />
+            </TouchableOpacity>
             <TouchableOpacity 
               style={styles(colors).deleteButton} 
               onPress={() => deleteImage(item.id)}
@@ -67,9 +101,13 @@ const styles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.surface,
     position: 'relative',
   },
-  image: {
+  imageTouchable: {
     width: '100%',
     height: 200,
+  },
+  image: {
+    width: '100%',
+    height: '100%',
   },
   deleteButton: {
     position: 'absolute',
