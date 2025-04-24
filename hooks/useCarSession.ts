@@ -226,6 +226,13 @@ export const useCarSession = () => {
         `Preparing to save ${exteriorsToSave.length} exterior photos...`
       );
 
+      // Ensure we have a valid category name
+      const categoryName =
+        `${activeSession.carMake} ${activeSession.carModel}`.trim();
+      if (!categoryName) {
+        console.warn('No valid category name found, using "Uncategorized"');
+      }
+
       // Process all photos before completing
       const processedPhotos = await Promise.all(
         activeSession.photos.map(async (photo) => {
@@ -263,7 +270,7 @@ export const useCarSession = () => {
                 sessionId: activeSession.id,
                 angleName,
               },
-              `${activeSession.carMake} ${activeSession.carModel}`
+              categoryName || 'Uncategorized' // Use a consistent category name without extra spaces
             );
             console.log(`Saved to gallery: ${photo.id} - ${angleName}`);
           } catch (err) {

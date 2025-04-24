@@ -41,6 +41,23 @@ export default function FolderDetailScreen() {
 
       // Get images for this folder
       const images = getImagesForFolder(folderId);
+
+      // Debug logs to help identify issues
+      console.log('Folder ID:', folderId);
+      console.log('Folder name:', folder?.name);
+      console.log(
+        'All folders:',
+        folders.map((f) => `${f.id}: ${f.name}`)
+      );
+      console.log(
+        'All images categories:',
+        images.map(
+          (img) =>
+            `ID: ${img.id}, Category: "${img.category}", Make: ${img.metadata?.carMake}`
+        )
+      );
+
+      // Set folder images
       setFolderImages(images);
     }
   }, [folderId, folders]);

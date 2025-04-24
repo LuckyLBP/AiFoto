@@ -14,6 +14,8 @@ import {
 import { useTheme } from '../../theme/ThemeProvider';
 import { useCredits } from '../../hooks/useCredits';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { signOut } from 'firebase/auth';
+import { auth } from '../../firebase/config';
 
 export default function ProfileScreen() {
   const { colors, theme, toggleTheme } = useTheme();
@@ -93,6 +95,16 @@ export default function ProfileScreen() {
       Alert.alert('Fel', 'Kunde inte skicka meddelandet. Försök igen senare.');
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      // The auth state listener in _layout.tsx will handle redirection
+    } catch (error) {
+      console.error('Error signing out: ', error);
+      Alert.alert('Fel', 'Kunde inte logga ut. Försök igen.');
     }
   };
 
@@ -246,6 +258,22 @@ export default function ProfileScreen() {
             fordon.
           </Text>
           <Text style={styles(colors).aboutText}>Version 1.0.0</Text>
+        </View>
+
+        <View style={styles(colors).section}>
+          <Text style={styles(colors).sectionTitle}>Konto</Text>
+          <TouchableOpacity
+            style={styles(colors).logoutButton}
+            onPress={handleSignOut}
+          >
+            <Ionicons
+              name="log-out-outline"
+              size={20}
+              color="#fff"
+              style={styles(colors).logoutIcon}
+            />
+            <Text style={styles(colors).logoutButtonText}>Logga ut</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -448,5 +476,21 @@ const styles = (colors: any) =>
     },
     skipCreditsActiveText: {
       color: '#fff',
+    },
+    logoutButton: {
+      backgroundColor: '#f44336',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 12,
+      borderRadius: 8,
+      marginTop: 10,
+    },
+    logoutIcon: {
+      marginRight: 8,
+    },
+    logoutButtonText: {
+      color: '#fff',
+      fontWeight: 'bold',
     },
   });

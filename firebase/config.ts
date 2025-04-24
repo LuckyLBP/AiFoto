@@ -1,22 +1,29 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 import { getAuth } from 'firebase/auth';
 
 // Your web app's Firebase configuration
-// Replace with your actual Firebase config
 const firebaseConfig = {
-  apiKey: 'your-api-key',
-  authDomain: 'your-project.firebaseapp.com',
-  projectId: 'your-project-id',
-  storageBucket: 'your-project.appspot.com',
-  messagingSenderId: 'your-messaging-sender-id',
-  appId: 'your-app-id',
+  apiKey: 'AIzaSyD9JDLjtgeYW4RMrJIUWQZuk2WVaOcEsCU',
+  authDomain: 'aifoto-9666a.firebaseapp.com',
+  projectId: 'aifoto-9666a',
+  storageBucket: 'aifoto-9666a.appspot.com',
+  messagingSenderId: '568135978293',
+  appId: '1:568135978293:web:bf5275cd6e72c6d177507c',
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Check if Firebase app is already initialized to avoid duplicate app initialization error
+let app;
+if (getApps().length === 0) {
+  app = initializeApp(firebaseConfig);
+} else {
+  app = getApp(); // If already initialized, use that one
+}
 
-// Initialize services
+// Initialize Firebase services
 export const db = getFirestore(app);
+export const storage = getStorage(app);
 export const auth = getAuth(app);
+
 export default app;
