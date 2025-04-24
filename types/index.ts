@@ -3,7 +3,7 @@ export interface CarAngle {
   name: string;
   description: string;
   isInterior: boolean;
-  outlineImage?: any; 
+  outlineImage?: any;
   requiredForListing: boolean;
 }
 
@@ -44,7 +44,7 @@ export interface EditableImage {
 export interface Background {
   id: string;
   name: string;
-  uri: any; 
+  uri: any;
   thumbnail?: string;
 }
 
@@ -58,15 +58,14 @@ export interface User {
 export interface GalleryImage {
   id: string;
   uri: string;
-  fileName?: string;
   createdAt: number;
-  width?: number;
-  height?: number;
+  category?: string;
   metadata?: {
     carMake?: string;
     carModel?: string;
     year?: number;
     angleId?: string;
     sessionId?: string;
+    angleName?: string;
   };
 }

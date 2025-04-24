@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Platform,
+  FlatList,
 } from 'react-native';
 import {
   Camera,
@@ -19,26 +20,48 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { CarAngle } from '../types';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import * as ImagePicker from 'expo-image-picker';
 
 interface CarCameraProps {
-  carAngle: CarAngle;
-  onPhotoTaken: (uri: string) => void;
+  exteriorAngles: CarAngle[];
+  interiorAngles: CarAngle[];
+  onPhotoTaken: (uri: string, angleId: string) => void;
   onCancel: () => void;
+  onDone: () => void; // New prop to handle done/continue to editing
+  photographedAngles: string[]; // Array of photographed angle IDs
 }
 
 const CarCamera: React.FC<CarCameraProps> = ({
-  carAngle,
+  exteriorAngles,
+  interiorAngles,
   onPhotoTaken,
   onCancel,
+  onDone,
+  photographedAngles,
 }) => {
   const [permission, requestPermission] = useCameraPermissions();
   const [isTakingPhoto, setIsTakingPhoto] = useState(false);
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>(
     'portrait'
   );
+  const [viewMode, setViewMode] = useState<'exterior' | 'interior'>('exterior');
+  const [currentAngleIndex, setCurrentAngleIndex] = useState(0);
   const cameraRef = useRef<CameraView>(null);
+  const angleListRef = useRef<FlatList>(null);
   const windowWidth = Dimensions.get('window').width;
   const windowHeight = Dimensions.get('window').height;
+
+  // Get all angles based on current view mode
+  const angles = viewMode === 'exterior' ? exteriorAngles : interiorAngles;
+
+  // Get current angle
+  const currentAngle =
+    angles[currentAngleIndex] || (angles.length > 0 ? angles[0] : null);
+
+  // Reset angle index when switching between interior/exterior
+  useEffect(() => {
+    setCurrentAngleIndex(0);
+  }, [viewMode]);
 
   // Listen for orientation changes
   useEffect(() => {
@@ -68,7 +91,20 @@ const CarCamera: React.FC<CarCameraProps> = ({
     };
   }, []);
 
+  // Scroll to selected angle
+  useEffect(() => {
+    if (angleListRef.current && angles.length > 0) {
+      angleListRef.current.scrollToIndex({
+        index: currentAngleIndex,
+        animated: true,
+        viewPosition: 0.5,
+      });
+    }
+  }, [currentAngleIndex, angles]);
+
   const handleTakePhoto = async () => {
+    if (!currentAngle) return;
+
     if (cameraRef.current && !isTakingPhoto) {
       setIsTakingPhoto(true);
       try {
@@ -79,8 +115,8 @@ const CarCamera: React.FC<CarCameraProps> = ({
 
         if (photo) {
           console.log('Foto taget:', photo.uri);
-          // Directly use the photo instead of setting tempPhotoUri
-          onPhotoTaken(photo.uri);
+          // Pass both the photo URI and the current angle ID
+          onPhotoTaken(photo.uri, currentAngle.id);
         }
       } catch (error) {
         console.error('Fel vid fotografering:', error);
@@ -89,6 +125,36 @@ const CarCamera: React.FC<CarCameraProps> = ({
         setIsTakingPhoto(false);
       }
     }
+  };
+
+  const handleUploadImage = async () => {
+    if (!currentAngle) return;
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const selectedImage = result.assets[0];
+        console.log('Bild uppladdad:', selectedImage.uri);
+        onPhotoTaken(selectedImage.uri, currentAngle.id);
+      }
+    } catch (error) {
+      console.error('Fel vid uppladdning:', error);
+      alert('Kunde inte ladda upp bilden. Försök igen.');
+    }
+  };
+
+  const handleAngleSelect = (index: number) => {
+    setCurrentAngleIndex(index);
+  };
+
+  const isAnglePhotographed = (angleId: string): boolean => {
+    return photographedAngles.includes(angleId);
   };
 
   if (!permission) {
@@ -110,11 +176,11 @@ const CarCamera: React.FC<CarCameraProps> = ({
     );
   }
 
-  // Show the camera directly, removing the preview condition
+  // Show the camera with the angle slider
   return (
     <View style={styles.container}>
       <CameraView ref={cameraRef} style={styles.camera} mute={true}>
-        {/* Top bar med vinkelnamn */}
+        {/* Top bar med vinkelnamn och växla mellan inre/yttre */}
         <View
           style={[
             styles.topBar,
@@ -124,14 +190,29 @@ const CarCamera: React.FC<CarCameraProps> = ({
           <TouchableOpacity style={styles.backButton} onPress={onCancel}>
             <Ionicons name="arrow-back" size={28} color="white" />
           </TouchableOpacity>
-          <Text style={styles.angleText}>{carAngle.name}</Text>
+
+          {/* New Done button */}
+          <TouchableOpacity
+            style={styles.doneButton}
+            onPress={onDone}
+            disabled={photographedAngles.length === 0}
+          >
+            <Text
+              style={[
+                styles.doneButtonText,
+                photographedAngles.length === 0 && styles.disabledText,
+              ]}
+            >
+              Klar ({photographedAngles.length})
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Kontur-/guideöverlägg */}
-        {carAngle.outlineImage && (
+        {currentAngle && currentAngle.outlineImage && (
           <View style={styles.outlineContainer}>
             <Image
-              source={carAngle.outlineImage}
+              source={currentAngle.outlineImage}
               style={[
                 styles.outlineImage,
                 orientation === 'landscape'
@@ -143,19 +224,74 @@ const CarCamera: React.FC<CarCameraProps> = ({
           </View>
         )}
 
-        {/* Beskrivningstooltip */}
+        {/* Angles slider */}
         <View
           style={[
-            styles.tooltipContainer,
-            orientation === 'landscape' && styles.tooltipContainerLandscape,
+            styles.angleSliderContainer,
+            orientation === 'landscape' && styles.angleSliderContainerLandscape,
           ]}
         >
-          <View style={styles.tooltip}>
-            <Text style={styles.tooltipText}>{carAngle.description}</Text>
-          </View>
+          <FlatList
+            ref={angleListRef}
+            data={angles}
+            horizontal={orientation === 'portrait'}
+            showsHorizontalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}
+            keyExtractor={(item) => item.id}
+            onScrollToIndexFailed={() => {}}
+            contentContainerStyle={
+              orientation === 'landscape'
+                ? styles.angleListContainerLandscape
+                : styles.angleListContainer
+            }
+            renderItem={({ item, index }) => (
+              <TouchableOpacity
+                style={[
+                  styles.angleItem,
+                  currentAngleIndex === index && styles.selectedAngleItem,
+                  orientation === 'landscape' && styles.angleItemLandscape,
+                ]}
+                onPress={() => handleAngleSelect(index)}
+              >
+                {isAnglePhotographed(item.id) && (
+                  <View style={styles.checkmarkBadge}>
+                    <Ionicons name="checkmark" size={16} color="#fff" />
+                  </View>
+                )}
+                <Text
+                  style={[
+                    styles.angleItemText,
+                    currentAngleIndex === index && styles.selectedAngleItemText,
+                  ]}
+                  numberOfLines={2}
+                >
+                  {item.name}
+                </Text>
+                {item.requiredForListing && (
+                  <View style={styles.requiredBadge}>
+                    <Text style={styles.requiredText}>Obligatorisk</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
+          />
         </View>
 
-        {/* Bottom controls using Expo's recommended pattern */}
+        {/* Beskrivningstooltip */}
+        {currentAngle && (
+          <View
+            style={[
+              styles.tooltipContainer,
+              orientation === 'landscape' && styles.tooltipContainerLandscape,
+            ]}
+          >
+            <View style={styles.tooltip}>
+              <Text style={styles.tooltipText}>{currentAngle.description}</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Bottom controls with upload button */}
         <View
           style={[
             styles.shutterContainer,
@@ -166,6 +302,7 @@ const CarCamera: React.FC<CarCameraProps> = ({
             <Text style={styles.cancelText}>Avbryt</Text>
           </TouchableOpacity>
 
+          {/* Camera shutter button */}
           <Pressable onPress={handleTakePhoto} disabled={isTakingPhoto}>
             {({ pressed }) => (
               <View
@@ -183,7 +320,14 @@ const CarCamera: React.FC<CarCameraProps> = ({
             )}
           </Pressable>
 
-          <View style={{ width: 80 }}></View>
+          {/* Upload button */}
+          <TouchableOpacity
+            style={styles.uploadButton}
+            onPress={handleUploadImage}
+            disabled={isTakingPhoto}
+          >
+            <Ionicons name="images" size={28} color="white" />
+          </TouchableOpacity>
         </View>
       </CameraView>
     </View>
@@ -213,9 +357,43 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 8,
   },
-  flipButton: {
-    padding: 8,
+  viewToggleButton: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
   },
+  viewToggleText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  // ...existing styles...
+
+  // Updated styles for upload button
+  uploadButton: {
+    width: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // New styles for done button
+  doneButton: {
+    backgroundColor: 'rgba(52, 168, 83, 0.8)',
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 20,
+  },
+  doneButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  disabledText: {
+    opacity: 0.5,
+  },
+
+  // Existing styles remain the same
   angleText: {
     color: 'white',
     fontSize: 18,
@@ -332,50 +510,83 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
   },
-  // Preview styles
-  previewHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  // Angle slider styles
+  angleSliderContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 110,
+    height: 70,
+  },
+  angleSliderContainerLandscape: {
+    top: 0,
+    bottom: 0,
+    right: 'auto',
+    width: 90,
+    height: '100%',
+    paddingTop: 80,
+    paddingBottom: 50,
+  },
+  angleListContainer: {
+    paddingHorizontal: 10,
     alignItems: 'center',
-    padding: 20,
-    paddingTop: 50,
   },
-  previewHeaderLandscape: {
-    paddingTop: Platform.OS === 'ios' ? 20 : 10,
+  angleListContainerLandscape: {
+    paddingVertical: 10,
+    alignItems: 'center',
   },
-  previewTitle: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  previewImage: {
-    flex: 1,
-    width: '100%',
-  },
-  previewControls: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 20,
-    paddingBottom: 30,
-  },
-  previewControlsLandscape: {
-    paddingBottom: 20,
-  },
-  previewButton: {
-    flex: 1,
-    padding: 15,
-    margin: 10,
+  angleItem: {
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    padding: 10,
     borderRadius: 10,
-    backgroundColor: '#333',
+    marginHorizontal: 6,
+    width: 100,
+    height: 60,
+    justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
   },
-  acceptButton: {
-    backgroundColor: '#34A853',
+  angleItemLandscape: {
+    marginVertical: 6,
+    marginHorizontal: 0,
+    width: 80,
   },
-  previewButtonText: {
+  selectedAngleItem: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    borderColor: '#fff',
+    borderWidth: 2,
+  },
+  angleItemText: {
+    color: '#ccc',
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  selectedAngleItemText: {
     color: 'white',
     fontWeight: 'bold',
-    fontSize: 16,
+  },
+  checkmarkBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#34A853',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  requiredBadge: {
+    position: 'absolute',
+    bottom: -5,
+    backgroundColor: 'rgba(251, 188, 5, 0.7)',
+    paddingVertical: 2,
+    paddingHorizontal: 5,
+    borderRadius: 4,
+  },
+  requiredText: {
+    fontSize: 8,
+    color: '#000',
   },
 });
 
